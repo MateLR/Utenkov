@@ -1,0 +1,51 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Аналитика</title>
+    <link rel="stylesheet"
+          href="file:///C:/Users/Utenk/Desktop/Обучение/Технологиии программирования на python 2 курс/Task 2/css_template.css">
+</head>
+<body>
+<h1>Аналитика по зарплатам и городам для
+    профессии {{name}}</h1>
+<img src="file:///C:/Users/Utenk/Desktop/Обучение/Технологиии программирования на python 2 курс/Task 2/graph.png"
+     alt="Графики">
+<table>
+    <caption>Статистика по годам</caption>
+
+    <thead>
+    <tr>
+        {% for header in headers1 %}
+        <th>{{ header}}</th>
+        {% endfor %}
+    </tr>
+    </thead>
+    {% for row in rows1 %}
+    <tr>
+        {% for el in row %}
+        <td>{{ el }}</td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
+
+<table>
+    <caption>Статистика по городам</caption>
+
+    <thead>
+    <tr>
+        {% for header in headers2 %}
+        <th>{{ header }}</th>
+        {% endfor %}
+    </tr>
+    </thead>
+    {% for row in rows2 %}
+    <tr>
+        {% for el in row %}
+        <td>{{ el }}</td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+</table>
+</body>
+</html>
