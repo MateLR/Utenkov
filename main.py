@@ -6,7 +6,24 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, Border, Side
 from jinja2 import Environment, FileSystemLoader
+import prettytable
+from prettytable import PrettyTable
 import pdfkit
+
+
+def delete_spaces(s: str):
+    return ' '.join(s.split())
+
+
+def cut_string(s: str):
+    if len(s) > 100:
+        return s[:100] + '...'
+    return s
+
+
+def exp_for_num(s: str):
+    s = re.findall(r'\d*\.\d+|\d+', s)
+    return 0 if len(s) == 0 else int(s[0])
 
 
 def change_string(s: str):
@@ -26,6 +43,8 @@ def check_file_for_empty(len: int):
         quit()
 
 
+headings = ['№', 'Название', 'Описание', 'Навыки', 'Опыт работы', 'Премиум-вакансия', 'Компания',
+            'Оклад', 'Название региона', 'Дата публикации вакансии']
 currency = {"AZN": "Манаты",
             "BYR": "Белорусские рубли",
             "EUR": "Евро",
@@ -36,6 +55,12 @@ currency = {"AZN": "Манаты",
             "UAH": "Гривны",
             "USD": "Доллары",
             "UZS": "Узбекский сум"}
+experience = {"noExperience": "Нет опыта",
+              "between1And3": "От 1 года до 3 лет",
+              "between3And6": "От 3 до 6 лет",
+              "moreThan6": "Более 6 лет"}
+bools = {"False": "Нет",
+         "True": "Да"}
 currency_to_rub = {
     "Манаты": 35.68,
     "Белорусские рубли": 23.91,
@@ -48,6 +73,30 @@ currency_to_rub = {
     "Доллары": 60.66,
     "Узбекский сум": 0.0055,
 }
+functions_for_filter = {
+    "Название": lambda vacancy, value: vacancy.name == value,
+    "Описание": lambda vacancy, value: vacancy.description == value,
+    "Компания": lambda vacancy, value: vacancy.employer_name == value,
+    "Навыки": lambda vacancy, values: all(x in vacancy.key_skills for x in values.split(', ')),
+    "Опыт работы": lambda vacancy, value: vacancy.experience_id == value,
+    "Премиум-вакансия": lambda vacancy, value: vacancy.premium == value,
+    "Название региона": lambda vacancy, value: vacancy.area_name == value,
+    "Идентификатор валюты оклада": lambda vacancy, value: vacancy.salary.salary_currency == value,
+    "Дата публикации вакансии": lambda vacancy, value: vacancy.published_at.strftime("%d.%m.%Y") == value,
+    "Оклад": lambda vacancy, value: vacancy.salary.salary_from <= float(value) <= vacancy.salary.salary_to,
+}
+functions_for_sort = {
+    "Название": lambda vacancy: vacancy.name,
+    "Описание": lambda vacancy: vacancy.description,
+    "Компания": lambda vacancy: vacancy.employer_name,
+    "Навыки": lambda vacancy: len(vacancy.key_skills),
+    "Опыт работы": lambda vacancy: exp_for_num(vacancy.experience_id),
+    "Премиум-вакансия": lambda vacancy: vacancy.premium,
+    "Название региона": lambda vacancy: vacancy.area_name,
+    "Идентификатор валюты оклада": lambda vacancy: vacancy.salary.salary_currency,
+    "Дата публикации вакансии": lambda vacancy: vacancy.published_at,
+    "Оклад": lambda vacancy: vacancy.salary.mid_salary_in_rubles
+}
 
 
 class Salary:
@@ -55,16 +104,36 @@ class Salary:
         self.salary_from = float(salary[0])
         self.salary_to = float(salary[1])
         self.salary_currency = currency[salary[2]]
+        self.salary_gross = False
         self.mid_salary_in_rubles = (self.salary_from + self.salary_to) / 2 * currency_to_rub[self.salary_currency]
+
+    def add_gross(self, salary_gross):
+        self.salary_gross = bools[salary_gross]
+
+    def to_string(self):
+        return f'{"{:,d}".format(int(self.salary_from)).replace(",", " ")} - {"{:,d}".format(int(self.salary_to)).replace(",", " ")} ({self.salary_currency}) {"(Без вычета налогов)" if self.salary_gross != "Нет" else "(С вычетом налогов)"}'
 
 
 class Vacancy(object):
     def __init__(self, vacancy):
         self.name = vacancy['name']
-        self.salary = Salary([vacancy['salary_from'], vacancy['salary_to'], vacancy['salary_currency']])
+        self.salary = Salary(
+            [vacancy['salary_from'], vacancy['salary_to'], vacancy['salary_currency']])
         self.area_name = vacancy['area_name']
         self.published_at = datetime.strptime(vacancy['published_at'], '%Y-%m-%dT%H:%M:%S%z')
         self.year = int(self.published_at.strftime("%Y"))
+        if len(vacancy) > 6:
+            self.description = vacancy['description']
+            self.key_skills = vacancy['key_skills'].split(';;')
+            self.experience_id = experience[vacancy['experience_id']]
+            self.premium = bools[vacancy['premium']]
+            self.employer_name = vacancy['employer_name']
+            self.salary.add_gross(vacancy['salary_gross'])
+
+    def get_row(self, number: int):
+        return [number + 1, self.name, cut_string(self.description), cut_string('\n'.join(self.key_skills)),
+                self.experience_id, self.premium, self.employer_name, self.salary.to_string(), self.area_name,
+                self.published_at.strftime("%d.%m.%Y")]
 
 
 class DataSet(object):
@@ -84,6 +153,9 @@ class DataSet(object):
 
         self.edit_analyze_set()
 
+        self.print_analyze()
+
+    def print_analyze(self):
         print(f"Динамика уровня зарплат по годам: {self.salary_by_years}")
         print(f"Динамика количества вакансий по годам: {self.number_by_years}")
         print(f"Динамика уровня зарплат по годам для выбранной профессии: {self.salary_by_years_job}")
@@ -142,6 +214,24 @@ class DataSet(object):
         vacancy = text[0]
         return [dict(zip(vacancy, [change_string(s) for s in x if s])) for x in text[1:] if
                 len([value for value in x if value]) == len(vacancy)]
+
+    def sort(self, sort_params, is_sort_reverse: bool):
+        self.vacancies_objects = sorted(self.vacancies_objects, key=functions_for_sort[sort_params],
+                                        reverse=is_sort_reverse)
+
+    def get_rows(self, need_filter: bool, filter_params):
+        rows = []
+        count = 0
+        for i in range(self.vacancies_number):
+            if need_filter:
+                if not functions_for_filter[filter_params[0]](self.vacancies_objects[i], filter_params[1]):
+                    continue
+            rows.append(self.vacancies_objects[i].get_row(count))
+            count += 1
+        if need_filter and len(rows) < 1:
+            print("Ничего не найдено")
+            quit()
+        return rows
 
 
 class Report(object):
@@ -202,7 +292,7 @@ class Report(object):
 
         self.fig.tight_layout()
 
-        #self.fig.show()
+        # self.fig.show()
         self.fig.savefig('graph.png')
 
     def generate_excel(self):
@@ -246,7 +336,7 @@ class Report(object):
 
     def analyze_to_rows_html(self):
         headers1 = ["Год", "Средняя зарплата", "Количество вакансий", f"Средняя зарплата - {self.job_name}",
-                   f"Количество вакансий - {self.job_name}"]
+                    f"Количество вакансий - {self.job_name}"]
         rows1 = []
         for year in self.data_set.salary_by_years.keys():
             rows1.append(
@@ -259,8 +349,8 @@ class Report(object):
         rows2 = []
         for i in range(10):
             rows2.append([salary_items[i][0], salary_items[i][1], "",
-                                share_number_items[i][0],
-                                f'{round(share_number_items[i][1] * 100,3)}%'])
+                          share_number_items[i][0],
+                          f'{round(share_number_items[i][1] * 100, 3)}%'])
         return headers1, headers2, rows1, rows2
 
     @staticmethod
@@ -283,13 +373,66 @@ class Report(object):
             ws.column_dimensions[col].width = value
 
 
-class InputConnect(object):
+class TableOfDataSet(object):
     def __init__(self):
         self.name: str = input("Введите название файла: ")
-        self.job_name = input("Введите название профессии: ")
-        x = Report(self.name, self.job_name)
-        x.generate_image()
-        x.generate_pdf()
+        self.filter_params = input("Введите параметр фильтрации: ")
+        self.sort_params = input("Введите параметр сортировки: ")
+        self.is_sort_reverse = input("Обратный порядок сортировки (Да / Нет): ")
+        self.numbers = input("Введите диапазон вывода: ").split()
+        self.new_fields = [x for x in input("Введите требуемые столбцы: ").split(', ') if x != '']
+        self.new_fields.append('№')
+        self.my_table = PrettyTable(border=True, header=True, hrules=prettytable.ALL)
+        self.need_filter = len(self.filter_params) > 0
+        self.needSort = len(self.sort_params) > 0
+        self.check_inputs()
+        self.data_set = DataSet(self.name)
+        if len(self.numbers) < 2:
+            self.numbers = [1, self.data_set.vacancies_number + 1] if len(self.numbers) == 0 else [
+                self.numbers[0],
+                self.data_set.vacancies_number + 1]
+        if self.needSort:
+            self.data_set.sort(self.sort_params, self.is_sort_reverse)
+        self.table_fill()
+
+    def check_inputs(self):
+        if self.need_filter:
+            if not ':' in self.filter_params:
+                print("Формат ввода некорректен")
+                quit()
+            self.filter_params = self.filter_params.split(': ', 1)
+            if not self.filter_params[0] in functions_for_filter.keys():
+                print("Параметр поиска некорректен")
+                quit()
+        if self.needSort and not self.sort_params in functions_for_sort.keys():
+            print("Параметр сортировки некорректен")
+            quit()
+        if not self.is_sort_reverse in ["Да", "Нет", ""]:
+            print("Порядок сортировки задан некорректно")
+            quit()
+        self.is_sort_reverse = True if self.is_sort_reverse == "Да" else False
+
+    def table_fill(self):
+        self.my_table.field_names = headings
+        self.my_table.add_rows(self.data_set.get_rows(self.need_filter, self.filter_params))
+        self.my_table.align = "l"
+        self.my_table.max_width = 20
+        self.new_fields = self.new_fields if len(self.new_fields) > 1 else self.my_table.field_names
+        print(self.my_table.get_string(start=int(self.numbers[0]) - 1, end=int(self.numbers[1]) - 1,
+                                       fields=self.new_fields))
+
+
+class InputConnect(object):
+    def __init__(self):
+        report_type = False if input("Введите данные для печати: ") == "Статистика" else True
+        if report_type:
+            x = TableOfDataSet()
+        else:
+            self.name: str = input("Введите название файла: ")
+            self.job_name = input("Введите название профессии: ")
+            x = Report(self.name, self.job_name)
+            x.generate_image()
+            x.generate_pdf()
 
 
 InputConnect()
