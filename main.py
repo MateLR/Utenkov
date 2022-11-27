@@ -424,7 +424,7 @@ class TableOfDataSet(object):
 
 class InputConnect(object):
     def __init__(self):
-        report_type = False if input("Введите выбранный формат отчёта: ") == "Статистика" else True
+        report_type = False if input("Введите тип данных для вывода(Статистика/Вакансии): ") == "Статистика" else True
         if report_type:
             x = TableOfDataSet()
         else:
