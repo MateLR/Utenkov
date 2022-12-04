@@ -11,36 +11,17 @@ from prettytable import PrettyTable
 import pdfkit
 
 
-def delete_spaces(s: str):
-    return ' '.join(s.split())
-
-
-def cut_string(s: str):
-    if len(s) > 100:
-        return s[:100] + '...'
-    return s
-
-
 def exp_for_num(s: str):
+    """Функция, котороая переводит строки с опытом в числа, которые в дальнейшем сравниваются
+
+    Args:
+        s (str): Принимает на вход одну переменную типа string, которая содержит в себе информацию об опыте работы
+
+    Returns:
+        int: возвращает числовое значение типа данных int, в соответствии с указанным значением опыта работы
+    """
     s = re.findall(r'\d*\.\d+|\d+', s)
     return 0 if len(s) == 0 else int(s[0])
-
-
-def change_string(s: str):
-    s = s.replace('\n', ';;')
-    return ' '.join(re.sub("<[^>]*>", "", s).split())
-
-
-def rename_cities(s: str):
-    s = s.replace(' ', '\n')
-    s = s.replace('-', '-\n')
-    return s
-
-
-def check_file_for_empty(len: int):
-    if len < 2:
-        print("Пустой файл" if len < 1 else "Нет данных")
-        quit()
 
 
 headings = ['№', 'Название', 'Описание', 'Навыки', 'Опыт работы', 'Премиум-вакансия', 'Компания',
@@ -100,22 +81,67 @@ functions_for_sort = {
 
 
 class Salary:
-    def __init__(self, salary):
+    """Класс для представления зарплаты
+
+    Attributes:
+        salary_from (float): Нижняя граница вилки оклада
+        salary_to (float): Верхняя граница вилки оклада
+        salary_currency (str): Валюта оклада
+        salary_gross (bool): Атрибут показывает есть ли налоговый вычет у зарплаты, по умолчанию значение False
+        mid_salary_in_rubles (float): Среднее значение зарплаты в рублях
+    """
+
+    def __init__(self, salary: list):
+        """Иницилизирует объект Salary, распаковывая все данные о зарплате, кроме налогового вычета
+
+        Args:
+            salary (list): Список данных о зарплате в порядке: Нижняя граница, Верхняя граница, Валюта
+        """
         self.salary_from = float(salary[0])
         self.salary_to = float(salary[1])
         self.salary_currency = currency[salary[2]]
         self.salary_gross = False
         self.mid_salary_in_rubles = (self.salary_from + self.salary_to) / 2 * currency_to_rub[self.salary_currency]
 
-    def add_gross(self, salary_gross):
+    def add_gross(self, salary_gross: str):
+        """Метод для изменения атрибута salary_gross, который нужно вызывать при наличии данной информации в строке
+
+        Args:
+            salary_gross (str): Строка с информацией на русском языке о наличии налогового вычета
+        """
         self.salary_gross = bools[salary_gross]
 
     def to_string(self):
+        """Преобразовывает всю информацию о зарплате в строку
+
+        Returns (str): Информация о зарплате
+
+        """
         return f'{"{:,d}".format(int(self.salary_from)).replace(",", " ")} - {"{:,d}".format(int(self.salary_to)).replace(",", " ")} ({self.salary_currency}) {"(Без вычета налогов)" if self.salary_gross != "Нет" else "(С вычетом налогов)"}'
 
 
 class Vacancy(object):
-    def __init__(self, vacancy):
+    """Класс для представления Вакансии
+
+    Attributes:
+        name (str): Название вакансии
+        salary (Salary): Вся информация о зарплате
+        area_name (str): Название региона вакансии
+        published_at (datetime): Дата публикации вакансии
+        year (int): Год публикации вакансии
+        description (str): Описание вакансии
+        key_skills (list): Список навыков
+        experience_id (str): Опыт работы требуемый для вакансии
+        premium (bool): Примиальность вакансии
+        employer_name (str): Название компании вакансии
+    """
+
+    def __init__(self, vacancy: dict):
+        """Иницилизирует объект вакансии, распаковывает все данные и выполняет их конвертацию
+
+        Args:
+            vacancy (dict): Словарь с данными о вакансии
+        """
         self.name = vacancy['name']
         self.salary = Salary(
             [vacancy['salary_from'], vacancy['salary_to'], vacancy['salary_currency']])
@@ -130,14 +156,57 @@ class Vacancy(object):
             self.employer_name = vacancy['employer_name']
             self.salary.add_gross(vacancy['salary_gross'])
 
+    @staticmethod
+    def cut_string(s: str):
+        """Обрезает строку, если её длина больше 100 символов и добавляет многоточие в конце
+
+        Args:
+            s (str): Принимает на вход одну переменную типа string
+
+        Returns:
+            (str): Изменённая строка
+
+        """
+        if len(s) > 100:
+            return s[:100] + '...'
+        return s
+
     def get_row(self, number: int):
-        return [number + 1, self.name, cut_string(self.description), cut_string('\n'.join(self.key_skills)),
+        """Преобразует всю информацию о вакансии в список для таблицы
+
+        Args:
+            number (int): Номер вакансии
+
+        Returns:
+            (list): Список данных о вакансии
+
+        """
+        return [number + 1, self.name, self.cut_string(self.description), self.cut_string('\n'.join(self.key_skills)),
                 self.experience_id, self.premium, self.employer_name, self.salary.to_string(), self.area_name,
                 self.published_at.strftime("%d.%m.%Y")]
 
 
 class DataSet(object):
+    """Класс, который преобразует csv файл в базу данных информации о вакансиях, и анализирует эту информацию
+
+    Attributes:
+        file_name (str):
+        vacancies_objects (list): Список, хранящий вакансии в виде объекта Vacancy
+        vacancies_number (int): Количество вакансий
+        salary_by_years (dict): Словарь с зарплатами по годам
+        number_by_years (dict): Словарь с количеством вакансий по годам
+        salary_by_years_job (dict): Словарь с зарплатами по годам, по выбранной профессии
+        number_by_years_job (dict): Словарь с количеством вакансий по годам, по выбранной профессии
+        salary_by_area (dict): Словарь с зарплатами по регионам
+        share_number_by_area (dict): Словарь с количеством зарплат по регионам
+    """
+
     def __init__(self, file_name: str):
+        """Инициализирует объект DataSet, преобразует файл с вакансиями в список вакансий
+
+        Args:
+            file_name: Имя файла
+        """
         self.file_name = file_name
         self.vacancies_objects = [Vacancy(x) for x in self.file_to_rows()]
         self.vacancies_number = len(self.vacancies_objects)
@@ -149,6 +218,11 @@ class DataSet(object):
         self.share_number_by_area = dict()
 
     def analyze(self, job_name: str):
+        """Анализирует вакансии по названию профессии
+
+        Args:
+            job_name (str): Название профессии
+        """
         self.fill_analyze_set(job_name)
 
         self.edit_analyze_set()
@@ -156,6 +230,8 @@ class DataSet(object):
         self.print_analyze()
 
     def print_analyze(self):
+        """Печатает в консоль данные с проведённого анализа вакансий
+        """
         print(f"Динамика уровня зарплат по годам: {self.salary_by_years}")
         print(f"Динамика количества вакансий по годам: {self.number_by_years}")
         print(f"Динамика уровня зарплат по годам для выбранной профессии: {self.salary_by_years_job}")
@@ -164,6 +240,11 @@ class DataSet(object):
         print(f"Доля вакансий по городам (в порядке убывания): {self.share_number_by_area}")
 
     def fill_analyze_set(self, job_name: str):
+        """Заполняет словари для анализа данными, которые потребуются для анализа
+
+        Args:
+            job_name (str): Название профессии
+        """
         for vac in self.vacancies_objects:
             if vac.year not in self.number_by_years:
                 self.number_by_years_job[vac.year] = 0
@@ -185,6 +266,8 @@ class DataSet(object):
                                                          vac.year] + vac.salary.mid_salary_in_rubles
 
     def edit_analyze_set(self):
+        """Редактирует словари для анализа данных, изменяя текущие данные под конечные, готовые к работе
+        """
         for key in self.salary_by_years.keys():
             self.salary_by_years[key] = int(self.salary_by_years[key] / self.number_by_years[key]) if \
                 self.number_by_years[key] != 0 else 0
@@ -206,20 +289,65 @@ class DataSet(object):
         self.share_number_by_area = dict(
             sorted(self.share_number_by_area.items(), key=lambda x: x[1], reverse=True)[:10])
 
+    @staticmethod
+    def check_file_for_empty(len: int):
+        """Проверяет входной файл на пустоту или отсутствия данных
+
+        Args:
+            len (int): Принимает на вход одну переменную типа int, длину массива данных из таблицы
+        """
+        if len < 2:
+            print("Пустой файл" if len < 1 else "Нет данных")
+            quit()
+
+    @staticmethod
+    def change_string(s: str):
+        """Убирает html тэги в строке, лишние пробелы и заменяет переносы строки на специальную строку
+
+        Args:
+            s (str): Строка для обработки
+
+        Returns:
+            (str): Строка без html тэгов, лишних пробелов и переносов
+        """
+        s = s.replace('\n', ';;')
+        return ' '.join(re.sub("<[^>]*>", "", s).split())
+
     def file_to_rows(self):
+        """Извлекает данные из csv таблицы и преобразует их в список словарей, подходящих для преобразования в объект Vacancy
+
+        Returns (list): Список словарей
+
+        """
         r_file = open(self.file_name, encoding='utf-8-sig')
         file = csv.reader(r_file)
         text = [x for x in file]
-        check_file_for_empty(len(text))
+        self.check_file_for_empty(len(text))
         vacancy = text[0]
-        return [dict(zip(vacancy, [change_string(s) for s in x if s])) for x in text[1:] if
+        return [dict(zip(vacancy, [self.change_string(s) for s in x if s])) for x in text[1:] if
                 len([value for value in x if value]) == len(vacancy)]
 
-    def sort(self, sort_params, is_sort_reverse: bool):
+    def sort(self, sort_params: str, is_sort_reverse: bool):
+        """Сортирует список вакансий по нужным требованиям
+
+        Args:
+            sort_params (str): Параметры сортировки, которые должны быть реализованы в словаре functions_for_sort
+            is_sort_reverse (bool): Атрибут, который указывает на необходимость обратной сортировки
+        """
         self.vacancies_objects = sorted(self.vacancies_objects, key=functions_for_sort[sort_params],
                                         reverse=is_sort_reverse)
 
-    def get_rows(self, need_filter: bool, filter_params):
+    def get_rows(self, need_filter: bool, filter_params: str):
+        """Преобразует список вакансий [Vacancy] в список списков [[]], содержащих данные о вакансии и фильтрует по параметру
+
+        Args:
+            need_filter (bool): Аргумент, указывающий на необходимость фильтрации
+            filter_params (str): Параметр фильтрации
+
+        Returns:
+            (list): Список вакансий в виде списков
+
+        """
         rows = []
         count = 0
         for i in range(self.vacancies_number):
@@ -235,7 +363,25 @@ class DataSet(object):
 
 
 class Report(object):
+    """Класс для формирования отчётов о вакансиях в виде изображения, таблицы (.xlsx), файла (pdf)
+
+    Attributes:
+        job_name (str): Название профессии для анализа
+        data_set (DataSet): База данных по вакансиям
+        wb (Workbook): Таблица, которая преобразуется в .xlsx
+        ws1 (WorkSheet): Первый лист таблицы
+        ws2 (WorkSheet): Второй лист таблицы
+        fig (.Figure): Фигура изображения с анализом
+        ax (~.axes.Axes): Список осей с анализом
+
+    """
     def __init__(self, file_name: str, job_name: str):
+        """Инициализирует объект Report
+
+        Args:
+            file_name (str): Название файла с информацией о вакансиях
+            job_name (str): Название профессии для анализа
+        """
         self.job_name = job_name
         self.data_set = DataSet(file_name)
         self.data_set.analyze(self.job_name)
@@ -245,13 +391,28 @@ class Report(object):
         self.ws2 = self.wb.create_sheet("Статистика по городам")
         self.fig, self.ax = plt.subplots(2, 2)
 
+    @staticmethod
+    def rename_cities(s: str):
+        """Переиминовывает входные названия городов, добавляя перенос строки в названия городов, состоящие из двух слов
+
+        Args:
+            s (str): принимает на вход одну переменную типа string, название города
+        Returns:
+            str: Название города, если в нём был пробел или дефис, тогда будет с переносом строки
+        """
+        s = s.replace(' ', '\n')
+        s = s.replace('-', '-\n')
+        return s
+
     def generate_image(self):
+        """Генерирует и сохраняет изображение в директории
+        """
         labels = list(self.data_set.salary_by_years.keys())
         average_salary = list(self.data_set.salary_by_years.values())
         job_salary = list(self.data_set.salary_by_years_job.values())
         average_number = list(self.data_set.number_by_years.values())
         job_number = list(self.data_set.number_by_years_job.values())
-        cities_salary = [rename_cities(x) for x in self.data_set.salary_by_area.keys()]
+        cities_salary = [self.rename_cities(x) for x in self.data_set.salary_by_area.keys()]
         salaries_city = list(self.data_set.salary_by_area.values())
         cities_share = ["Другие"] + list(self.data_set.share_number_by_area.keys())
         shares_city = list(self.data_set.share_number_by_area.values())
@@ -296,7 +457,9 @@ class Report(object):
         self.fig.savefig('graph.png')
 
     def generate_excel(self):
-        self.analyze_to_rows()
+        """Генерирует и сохраняет таблицу в виде .xlsx файла с анализом
+        """
+        self.analyze_to_rows_xlsx()
         self.edit_sheet_style(self.ws1)
         self.edit_sheet_style(self.ws2)
         self.ws2.insert_cols(3)
@@ -309,6 +472,8 @@ class Report(object):
         self.wb.save("report.xlsx")
 
     def generate_pdf(self):
+        """Генерирует и сохраняет pdf файл с изображением и таблицей с анализом
+        """
         env = Environment(loader=FileSystemLoader('.'))
         template = env.get_template("html_template.html")
         tables = self.analyze_to_rows_html()
@@ -318,7 +483,9 @@ class Report(object):
         config = pdfkit.configuration(wkhtmltopdf=r'D:\wkhtmltopdf\bin\wkhtmltopdf.exe')
         pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={"enable-local-file-access": ""})
 
-    def analyze_to_rows(self):
+    def analyze_to_rows_xlsx(self):
+        """Преобразовывает словари с анализом из базы данных в строки для таблицы .xlsx
+        """
         self.ws1.append(["Год", "Средняя зарплата", "Количество вакансий", f"Средняя зарплата - {self.job_name}",
                          f"Количество вакансий - {self.job_name}"])
         for year in self.data_set.salary_by_years.keys():
@@ -335,6 +502,8 @@ class Report(object):
                              share_number_items[i][1]])
 
     def analyze_to_rows_html(self):
+        """Преобразовывает словари с анализом из базы данных в строки для html файла, который генерирует таблицу для pdf файла
+        """
         headers1 = ["Год", "Средняя зарплата", "Количество вакансий", f"Средняя зарплата - {self.job_name}",
                     f"Количество вакансий - {self.job_name}"]
         rows1 = []
@@ -355,6 +524,11 @@ class Report(object):
 
     @staticmethod
     def edit_sheet_style(ws):
+        """Изменяет стилистику таблицы .xlsx
+
+        Args:
+            ws (WorkSheet): Лист для изменения стилистики таблицы
+        """
         sd = Side(border_style='thin', color='000000')
         for el in ws['1']:
             el.font = Font(bold=True)
@@ -364,6 +538,11 @@ class Report(object):
 
     @staticmethod
     def edit_cols_width(ws):
+        """Изменяет ширину колонок таблицы .xlsx
+
+        Args:
+            ws (WorkSheet): Лист для изменения стилистики таблицы
+        """
         dims = {}
         for row in ws.rows:
             for cell in row:
@@ -374,6 +553,21 @@ class Report(object):
 
 
 class TableOfDataSet(object):
+    """Класс для демонстрации вакансий из базы данных в виде таблицы в консоле
+
+    Attributes:
+        name (str): Название файла
+        filter_params (str или list): Параметры фильтрации вакансий
+        sort_params (str): Параметры сортировки вакансий
+        is_sort_reverse (bool или str): Атрибут, указывающий на необходимость обратной сортировки
+        numbers (list): Список, содержащий границы номеров вакансий, которые нужно выводить
+        new_fields (list): Список столбцов, которые нужно выводить
+        my_table (PrettyTable): Объект консольной таблицы
+        need_filter (bool): Атрибут, указывающий на необходимость фильтрации
+        needSort (bool): Атрибут, указывающий на необходимость сортировки
+        data_set (DataSet): База данных с вакансиями
+
+    """
     def __init__(self):
         self.name: str = input("Введите название файла: ")
         self.filter_params = input("Введите параметр фильтрации: ")
@@ -386,6 +580,7 @@ class TableOfDataSet(object):
         self.need_filter = len(self.filter_params) > 0
         self.needSort = len(self.sort_params) > 0
         self.check_inputs()
+        self.is_sort_reverse = True if self.is_sort_reverse == "Да" else False
         self.data_set = DataSet(self.name)
         if len(self.numbers) < 2:
             self.numbers = [1, self.data_set.vacancies_number + 1] if len(self.numbers) == 0 else [
@@ -396,6 +591,8 @@ class TableOfDataSet(object):
         self.table_fill()
 
     def check_inputs(self):
+        """ Проверяет данные, введённые пользователем на корректность
+        """
         if self.need_filter:
             if not ':' in self.filter_params:
                 print("Формат ввода некорректен")
@@ -410,9 +607,10 @@ class TableOfDataSet(object):
         if not self.is_sort_reverse in ["Да", "Нет", ""]:
             print("Порядок сортировки задан некорректно")
             quit()
-        self.is_sort_reverse = True if self.is_sort_reverse == "Да" else False
 
     def table_fill(self):
+        """Стилизует и заполняет таблицу данными
+        """
         self.my_table.field_names = headings
         self.my_table.add_rows(self.data_set.get_rows(self.need_filter, self.filter_params))
         self.my_table.align = "l"
@@ -423,14 +621,18 @@ class TableOfDataSet(object):
 
 
 class InputConnect(object):
+    """Класс для ввода информации пользователем и выбора необходимых действий
+    """
     def __init__(self):
+        """Иницилизирует объект класса InputConnect, принимает данные из консоли и передаёт их в необходимые классы
+        """
         report_type = False if input("Введите тип данных для вывода(Статистика/Вакансии): ") == "Статистика" else True
         if report_type:
-            x = TableOfDataSet()
+            TableOfDataSet()
         else:
-            self.name: str = input("Введите название файла: ")
-            self.job_name = input("Введите название профессии: ")
-            x = Report(self.name, self.job_name)
+            name: str = input("Введите название файла: ")
+            job_name = input("Введите название профессии: ")
+            x = Report(name, job_name)
             x.generate_image()
             x.generate_pdf()
 
