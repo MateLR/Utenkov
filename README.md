@@ -1,6 +1,6 @@
 # Utenkov
 Практики по питоне с курса на elearn УрФУ
-### Тестировани
+# Тестированиe
 ## Unitеsts
 ![image](https://user-images.githubusercontent.com/77449049/208920109-99b58c7c-c867-4efd-a2a5-c8d555c5c56e.png)
 ![image](https://user-images.githubusercontent.com/77449049/208920194-965decc3-92fe-4bcf-8076-bfa10103155a.png)
