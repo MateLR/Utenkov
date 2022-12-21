@@ -1,4 +1,5 @@
 import csv
+import doctest
 import re
 import matplotlib.pyplot as plt
 import numpy as np
@@ -116,6 +117,11 @@ class Salary:
 
         Returns (str): Информация о зарплате
 
+        >>> Salary(['10.0', '20', 'USD']).to_string()
+        '10 - 20 (Доллары) (Без вычета налогов)'
+        >>> Salary(['10', '23232323', 'RUR']).to_string()
+        '10 - 23 232 323 (Рубли) (Без вычета налогов)'
+
         """
         return f'{"{:,d}".format(int(self.salary_from)).replace(",", " ")} - {"{:,d}".format(int(self.salary_to)).replace(",", " ")} ({self.salary_currency}) {"(С вычетом налогов)" if self.salary_gross else "(Без вычета налогов)"}'
 
@@ -206,6 +212,18 @@ class DataSet(object):
 
         Args:
             file_name: Имя файла
+        >>> len(DataSet('vacancies_medium.csv').vacancies_objects)
+        428
+        >>> DataSet('vacancies_medium.csv').vacancies_objects[0].name
+        'Web-программист'
+        >>> DataSet('vacancies_medium.csv').vacancies_objects[0].area_name
+        'Ульяновск'
+        >>> DataSet('vacancies_medium.csv').vacancies_objects[0].year
+        2022
+        >>> DataSet('vacancies_medium.csv').vacancies_objects[0].salary.mid_salary_in_rubles
+        55000.0
+        >>> DataSet('vacancies_medium.csv').vacancies_objects[0].experience_id
+        'Нет опыта'
         """
         self.file_name = file_name
         self.vacancies_objects = [Vacancy(x) for x in self.file_to_rows()]
@@ -317,7 +335,14 @@ class DataSet(object):
         """Извлекает данные из csv таблицы и преобразует их в список словарей, подходящих для преобразования в объект Vacancy
 
         Returns (list): Список словарей
-
+        >>> len(DataSet('vacancies.csv').file_to_rows())
+        91
+        >>> len(DataSet('vacancies_medium.csv').file_to_rows())
+        428
+        >>> len(DataSet('vacancies_big.csv').file_to_rows())
+        2946
+        >>> len(DataSet('vacancies.csv').file_to_rows()[0])
+        12
         """
         r_file = open(self.file_name, encoding='utf-8-sig')
         file = csv.reader(r_file)
@@ -640,4 +665,6 @@ class InputConnect(object):
             x.generate_image()
             x.generate_pdf()
 
+
 # InputConnect()
+doctest.testmod()
