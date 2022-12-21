@@ -15,6 +15,8 @@
 ![image](https://user-images.githubusercontent.com/77449049/208919933-dba77494-b9d8-45ed-805a-ef3a28e3d0ab.png)
 
 # Замеры
+
+![image](https://user-images.githubusercontent.com/77449049/208974612-d0a2787d-049f-46b8-a633-e7400b3c328a.png)
 ![image](https://user-images.githubusercontent.com/77449049/208971844-5873208e-85b9-411c-80cb-e64a379b84d7.png)
 ![image](https://user-images.githubusercontent.com/77449049/208971910-d63f4243-084b-4275-892f-6cf0c2c5e215.png)
 
