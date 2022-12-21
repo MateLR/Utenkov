@@ -640,4 +640,5 @@ class InputConnect(object):
             x.generate_image()
             x.generate_pdf()
 
-# InputConnect()
+
+InputConnect()
