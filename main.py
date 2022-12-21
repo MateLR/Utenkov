@@ -13,10 +13,8 @@ import pdfkit
 
 def exp_for_num(s: str):
     """Функция, котороая переводит строки с опытом в числа, которые в дальнейшем сравниваются
-
     Args:
         s (str): Принимает на вход одну переменную типа string, которая содержит в себе информацию об опыте работы
-
     Returns:
         int: возвращает числовое значение типа данных int, в соответствии с указанным значением опыта работы
     """
@@ -82,7 +80,6 @@ functions_for_sort = {
 
 class Salary:
     """Класс для представления зарплаты
-
     Attributes:
         salary_from (float): Нижняя граница вилки оклада
         salary_to (float): Верхняя граница вилки оклада
@@ -93,7 +90,6 @@ class Salary:
 
     def __init__(self, salary: list):
         """Иницилизирует объект Salary, распаковывая все данные о зарплате, кроме налогового вычета
-
         Args:
             salary (list): Список данных о зарплате в порядке: Нижняя граница, Верхняя граница, Валюта
         """
@@ -105,7 +101,6 @@ class Salary:
 
     def add_gross(self, salary_gross: str):
         """Метод для изменения атрибута salary_gross, который нужно вызывать при наличии данной информации в строке
-
         Args:
             salary_gross (str): Строка с информацией о наличии налогового вычета
         """
@@ -113,16 +108,13 @@ class Salary:
 
     def to_string(self):
         """Преобразовывает всю информацию о зарплате в строку
-
         Returns (str): Информация о зарплате
-
         """
         return f'{"{:,d}".format(int(self.salary_from)).replace(",", " ")} - {"{:,d}".format(int(self.salary_to)).replace(",", " ")} ({self.salary_currency}) {"(С вычетом налогов)" if self.salary_gross else "(Без вычета налогов)"}'
 
 
 class Vacancy(object):
     """Класс для представления Вакансии
-
     Attributes:
         name (str): Название вакансии
         salary (Salary): Вся информация о зарплате
@@ -138,7 +130,6 @@ class Vacancy(object):
 
     def __init__(self, vacancy: dict):
         """Иницилизирует объект вакансии, распаковывает все данные и выполняет их конвертацию
-
         Args:
             vacancy (dict): Словарь с данными о вакансии
         """
@@ -146,9 +137,9 @@ class Vacancy(object):
         self.salary = Salary(
             [vacancy['salary_from'], vacancy['salary_to'], vacancy['salary_currency']])
         self.area_name = vacancy['area_name']
-        self.published_at = datetime.strptime(vacancy['published_at'], '%Y-%m-%dT%H:%M:%S%z')
-        self.year = int(self.published_at.strftime("%Y"))
+        self.year = self.make_date_from_str(vacancy['published_at'])
         if len(vacancy) > 6:
+            self.published_at = datetime.strptime(vacancy['published_at'], '%Y-%m-%dT%H:%M:%S%z')
             self.description = vacancy['description']
             self.key_skills = vacancy['key_skills'].split(';;')
             self.experience_id = experience[vacancy['experience_id']]
@@ -157,15 +148,32 @@ class Vacancy(object):
             self.salary.add_gross(vacancy['salary_gross'])
 
     @staticmethod
+    def make_date_from_str(s: str):
+        return int(s[:4])
+
+    # @staticmethod
+    # def make_date_from_str(s: str):
+    #     return int(datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z').strftime("%Y"))
+    #
+    # @staticmethod
+    # def make_date_from_str(s: str):
+    #     return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z').year
+    #
+    # @staticmethod
+    # def make_date_from_str(s: str):
+    #     return datetime.strptime(s[:10], '%Y-%m-%d').year
+    #
+    # @staticmethod
+    # def make_date_from_str(s: str):
+    #     return datetime.strptime(s[:4], '%Y').year
+
+    @staticmethod
     def cut_string(s: str):
         """Обрезает строку, если её длина больше 100 символов и добавляет многоточие в конце
-
         Args:
             s (str): Принимает на вход одну переменную типа string
-
         Returns:
             (str): Изменённая строка
-
         """
         if len(s) > 100:
             return s[:100] + '...'
@@ -173,13 +181,10 @@ class Vacancy(object):
 
     def get_row(self, number: int):
         """Преобразует всю информацию о вакансии в список для таблицы
-
         Args:
             number (int): Номер вакансии
-
         Returns:
             (list): Список данных о вакансии
-
         """
         return [number + 1, self.name, self.cut_string(self.description), self.cut_string('\n'.join(self.key_skills)),
                 self.experience_id, self.premium, self.employer_name, self.salary.to_string(), self.area_name,
@@ -188,7 +193,6 @@ class Vacancy(object):
 
 class DataSet(object):
     """Класс, который преобразует csv файл в базу данных информации о вакансиях, и анализирует эту информацию
-
     Attributes:
         file_name (str):
         vacancies_objects (list): Список, хранящий вакансии в виде объекта Vacancy
@@ -203,7 +207,6 @@ class DataSet(object):
 
     def __init__(self, file_name: str):
         """Инициализирует объект DataSet, преобразует файл с вакансиями в список вакансий
-
         Args:
             file_name: Имя файла
         """
@@ -219,7 +222,6 @@ class DataSet(object):
 
     def analyze(self, job_name: str):
         """Анализирует вакансии по названию профессии
-
         Args:
             job_name (str): Название профессии
         """
@@ -227,7 +229,7 @@ class DataSet(object):
 
         self.edit_analyze_set()
 
-        # self.print_analyze()
+        self.print_analyze()
 
     def print_analyze(self):
         """Печатает в консоль данные с проведённого анализа вакансий
@@ -241,7 +243,6 @@ class DataSet(object):
 
     def fill_analyze_set(self, job_name: str):
         """Заполняет словари для анализа данными, которые потребуются для анализа
-
         Args:
             job_name (str): Название профессии
         """
@@ -292,7 +293,6 @@ class DataSet(object):
     @staticmethod
     def check_file_for_empty(len: int):
         """Проверяет входной файл на пустоту или отсутствия данных
-
         Args:
             len (int): Принимает на вход одну переменную типа int, длину массива данных из таблицы
         """
@@ -303,10 +303,8 @@ class DataSet(object):
     @staticmethod
     def change_string(s: str):
         """Убирает html тэги в строке, лишние пробелы и заменяет переносы строки на специальную строку
-
         Args:
             s (str): Строка для обработки
-
         Returns:
             (str): Строка без html тэгов, лишних пробелов и переносов
         """
@@ -315,9 +313,7 @@ class DataSet(object):
 
     def file_to_rows(self):
         """Извлекает данные из csv таблицы и преобразует их в список словарей, подходящих для преобразования в объект Vacancy
-
         Returns (list): Список словарей
-
         """
         r_file = open(self.file_name, encoding='utf-8-sig')
         file = csv.reader(r_file)
@@ -330,7 +326,6 @@ class DataSet(object):
 
     def sort(self, sort_params: str, is_sort_reverse=False):
         """Сортирует список вакансий по нужным требованиям
-
         Args:
             sort_params (str): Параметры сортировки, которые должны быть реализованы в словаре functions_for_sort
             is_sort_reverse (bool): Атрибут, который указывает на необходимость обратной сортировки
@@ -340,14 +335,11 @@ class DataSet(object):
 
     def get_rows(self, need_filter: bool, filter_params):
         """Преобразует список вакансий [Vacancy] в список списков [[]], содержащих данные о вакансии и фильтрует по параметру
-
         Args:
             need_filter (bool): Аргумент, указывающий на необходимость фильтрации
             filter_params: Параметр фильтрации в виде списка из двух элементов, где первый параметр, а второй значение
-
         Returns:
             (list): Список вакансий в виде списков
-
         """
         rows = []
         count = 0
@@ -365,7 +357,6 @@ class DataSet(object):
 
 class Report(object):
     """Класс для формирования отчётов о вакансиях в виде изображения, таблицы (.xlsx), файла (pdf)
-
     Attributes:
         job_name (str): Название профессии для анализа
         data_set (DataSet): База данных по вакансиям
@@ -374,12 +365,10 @@ class Report(object):
         ws2 (WorkSheet): Второй лист таблицы
         fig (.Figure): Фигура изображения с анализом
         ax (~.axes.Axes): Список осей с анализом
-
     """
 
     def __init__(self, file_name: str, job_name: str):
         """Инициализирует объект Report
-
         Args:
             file_name (str): Название файла с информацией о вакансиях
             job_name (str): Название профессии для анализа
@@ -396,7 +385,6 @@ class Report(object):
     @staticmethod
     def rename_cities(s: str):
         """Переиминовывает входные названия городов, добавляя перенос строки в названия городов, состоящие из двух слов
-
         Args:
             s (str): принимает на вход одну переменную типа string, название города
         Returns:
@@ -527,7 +515,6 @@ class Report(object):
     @staticmethod
     def edit_sheet_style(ws):
         """Изменяет стилистику таблицы .xlsx
-
         Args:
             ws (WorkSheet): Лист для изменения стилистики таблицы
         """
@@ -541,7 +528,6 @@ class Report(object):
     @staticmethod
     def edit_cols_width(ws):
         """Изменяет ширину колонок таблицы .xlsx
-
         Args:
             ws (WorkSheet): Лист для изменения стилистики таблицы
         """
@@ -556,7 +542,6 @@ class Report(object):
 
 class TableOfDataSet(object):
     """Класс для демонстрации вакансий из базы данных в виде таблицы в консоле
-
     Attributes:
         name (str): Название файла
         filter_params (str или list): Параметры фильтрации вакансий
@@ -568,7 +553,6 @@ class TableOfDataSet(object):
         need_filter (bool): Атрибут, указывающий на необходимость фильтрации
         needSort (bool): Атрибут, указывающий на необходимость сортировки
         data_set (DataSet): База данных с вакансиями
-
     """
 
     def __init__(self):
