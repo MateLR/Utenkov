@@ -17,7 +17,7 @@ class Separator(object):
         for year in years:
             data = file[file['years'] == year]
             data.loc[:, data.columns != 'years'].to_csv(f"temp_csv/vacancies_by_{year}.csv")
-        print("Files for separate by year: " + years)
+        print("Files were separate by year: " + years)
 
     @staticmethod
     def delete_files():
