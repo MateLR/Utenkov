@@ -38,3 +38,6 @@ self.year = int(vacancy['published_at'][:4])
 ```py
 datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z')
 ```
+## Разделение файлов
+Написал скрипт для удаления старых файлов и разделение нашего csv файла по годам
+![image](https://user-images.githubusercontent.com/77449049/209677109-965ded7e-e684-4b57-adb9-ba73c93242cb.png)
