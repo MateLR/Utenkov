@@ -4,8 +4,12 @@ import glob
 
 
 class Separator(object):
+    """Класс для разделения файла на части
+    """
     @staticmethod
     def separate_file_by_year_by_year(file_name: str):
+        """Метод для разделения фалы на части по годам
+        """
         file_name = file_name
         file = pd.read_csv(file_name)
         file['years'] = file['published_at'].apply(lambda x: x[:4])
@@ -17,6 +21,8 @@ class Separator(object):
 
     @staticmethod
     def delete_files():
+        """Метод для удаления старых версий разделения файлов из папки temp_csv
+        """
         files = glob.glob('temp_csv/*')
         for f in files:
             os.remove(f)
