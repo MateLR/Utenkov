@@ -1,4 +1,5 @@
 import csv
+import multiprocessing
 import re
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +10,7 @@ from jinja2 import Environment, FileSystemLoader
 import prettytable
 from prettytable import PrettyTable
 import pdfkit
+import os
 
 
 def exp_for_num(s: str):
@@ -178,7 +180,7 @@ class Vacancy(object):
 class DataSet(object):
     """Класс, который преобразует csv файл в базу данных информации о вакансиях, и анализирует эту информацию
     Attributes:
-        file_name (str):
+        path_name (str): Директория файла
         vacancies_objects (list): Список, хранящий вакансии в виде объекта Vacancy
         vacancies_number (int): Количество вакансий
         salary_by_years (dict): Словарь с зарплатами по годам
@@ -187,29 +189,62 @@ class DataSet(object):
         number_by_years_job (dict): Словарь с количеством вакансий по годам, по выбранной профессии
     """
 
-    def __init__(self, file_name: str):
+    def __init__(self, path_name: str):
         """Инициализирует объект DataSet, преобразует файл с вакансиями в список вакансий
         Args:
-            file_name: Имя файла
+            path_name: Директория файла
         """
-        self.file_name = file_name
-        self.vacancies_objects = [Vacancy(x) for x in self.file_to_rows()]
-        self.vacancies_number = len(self.vacancies_objects)
+        self.path_name = path_name
+        self.vacancies_objects = []
+        self.vacancies_number = 0
+        self.job_name = ''
         self.salary_by_years = dict()
         self.number_by_years = dict()
         self.salary_by_years_job = dict()
         self.number_by_years_job = dict()
 
     def analyze(self, job_name: str):
-        """Анализирует вакансии по названию профессии
+        """Анализирует данные и добавляет их в DataSet с применением многопроцессорной обработки
         Args:
             job_name (str): Название профессии
         """
-        self.fill_analyze_set(job_name)
-
-        self.edit_analyze_set()
-
+        self.job_name = job_name
+        files = [f"{self.path_name}/{file}" for file in os.listdir(self.path_name)]
+        pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        for item in pool.map(self.year_analyze, files):
+            self.salary_by_years[item[0]] = item[1]
+            self.number_by_years[item[0]] = item[0]
+            self.salary_by_years_job[item[0]] = item[3]
+            self.number_by_years_job[item[0]] = item[2]
+        pool.terminate()
         self.print_analyze()
+
+    def year_analyze(self, file_path):
+        """Анализирует и сохраняет вакансии с файла одного года
+
+        Args:
+            file_path: Название файла и путь к нему
+        """
+        vacancies_objects = [Vacancy(x) for x in self.file_to_rows(file_path)]
+        number_by_years = 0
+        salary_by_years = 0
+        number_by_years_job = 0
+        salary_by_years_job = 0
+        year = vacancies_objects[0].year
+        for vac in vacancies_objects:
+            number_by_years = number_by_years + 1
+            salary_by_years = salary_by_years + vac.salary.mid_salary_in_rubles
+
+            if vac.name.find(self.job_name) >= 0:
+                number_by_years_job = number_by_years_job + 1
+                salary_by_years_job = salary_by_years_job + vac.salary.mid_salary_in_rubles
+
+        salary_by_years = int(salary_by_years / number_by_years) if \
+            number_by_years != 0 else 0
+        salary_by_years_job = int(salary_by_years_job / number_by_years_job) if \
+            number_by_years_job != 0 else 0
+        self.vacancies_objects += vacancies_objects
+        return year, number_by_years, salary_by_years, number_by_years_job, salary_by_years_job
 
     def print_analyze(self):
         """Печатает в консоль данные с проведённого анализа вакансий
@@ -219,69 +254,23 @@ class DataSet(object):
         print(f"Динамика уровня зарплат по годам для выбранной профессии: {self.salary_by_years_job}")
         print(f"Динамика количества вакансий по годам для выбранной профессии: {self.number_by_years_job}")
 
-    def fill_analyze_set(self, job_name: str):
-        """Заполняет словари для анализа данными, которые потребуются для анализа
-        Args:
-            job_name (str): Название профессии
-        """
-        for vac in self.vacancies_objects:
-            if vac.year not in self.number_by_years:
-                self.number_by_years_job[vac.year] = 0
-                self.salary_by_years_job[vac.year] = 0
-                self.number_by_years[vac.year] = 0
-                self.salary_by_years[vac.year] = 0
-
-            self.number_by_years[vac.year] = self.number_by_years[vac.year] + 1
-            self.salary_by_years[vac.year] = self.salary_by_years[vac.year] + vac.salary.mid_salary_in_rubles
-
-            if vac.name.find(job_name) >= 0:
-                self.number_by_years_job[vac.year] = self.number_by_years_job[vac.year] + 1
-                self.salary_by_years_job[vac.year] = self.salary_by_years_job[
-                                                         vac.year] + vac.salary.mid_salary_in_rubles
-
-    def edit_analyze_set(self):
-        """Редактирует словари для анализа данных, изменяя текущие данные под конечные, готовые к работе
-        """
-        for key in self.salary_by_years.keys():
-            self.salary_by_years[key] = int(self.salary_by_years[key] / self.number_by_years[key]) if \
-                self.number_by_years[key] != 0 else 0
-        for key in self.salary_by_years_job.keys():
-            self.salary_by_years_job[key] = int(self.salary_by_years_job[key] / self.number_by_years_job[key]) if \
-                self.number_by_years_job[key] != 0 else 0
-
     @staticmethod
-    def check_file_for_empty(len: int):
-        """Проверяет входной файл на пустоту или отсутствия данных
-        Args:
-            len (int): Принимает на вход одну переменную типа int, длину массива данных из таблицы
-        """
-        if len < 2:
-            print("Пустой файл" if len < 1 else "Нет данных")
-            quit()
-
-    @staticmethod
-    def change_string(s: str):
-        """Убирает html тэги в строке, лишние пробелы и заменяет переносы строки на специальную строку
-        Args:
-            s (str): Строка для обработки
-        Returns:
-            (str): Строка без html тэгов, лишних пробелов и переносов
-        """
-        s = s.replace('\n', ';;')
-        return ' '.join(re.sub("<[^>]*>", "", s).split())
-
-    def file_to_rows(self):
+    def file_to_rows(file_path):
         """Извлекает данные из csv таблицы и преобразует их в список словарей, подходящих для преобразования в объект Vacancy
         Returns (list): Список словарей
+
+        Args:
+            file_path: Название файла и путь к нему
         """
-        r_file = open(self.file_name, encoding='utf-8-sig')
+        r_file = open(file_path, encoding='utf-8-sig')
         file = csv.reader(r_file)
         text = [x for x in file]
-        self.check_file_for_empty(len(text))
+        if len(text) < 2:
+            print("Пустой файл" if len(text) < 1 else "Нет данных")
+            quit()
         vacancy = text[0]
         r_file.close()
-        return [dict(zip(vacancy, [self.change_string(s) for s in x if s])) for x in text[1:] if
-                len([value for value in x if value]) == len(vacancy)]
+        return [dict(zip(vacancy, x)) for x in text[1:] if len([value for value in x if value]) == len(vacancy)]
 
     def sort(self, sort_params: str, is_sort_reverse=False):
         """Сортирует список вакансий по нужным требованиям
@@ -321,7 +310,6 @@ class Report(object):
         data_set (DataSet): База данных по вакансиям
         wb (Workbook): Таблица, которая преобразуется в .xlsx
         ws1 (WorkSheet): Первый лист таблицы
-        ws2 (WorkSheet): Второй лист таблицы
         fig (.Figure): Фигура изображения с анализом
         ax (~.axes.Axes): Список осей с анализом
     """
@@ -338,8 +326,7 @@ class Report(object):
         self.wb = Workbook()
         self.wb.active.title = "Статистика по годам"
         self.ws1 = self.wb.active
-        self.ws2 = self.wb.create_sheet("Статистика по городам")
-        self.fig, self.ax = plt.subplots(2, 2)
+        self.fig, self.ax = plt.subplots(2)
 
     @staticmethod
     def rename_cities(s: str):
@@ -365,56 +352,47 @@ class Report(object):
         x = np.arange(len(labels))
         width = 0.35
 
-        self.ax[0, 0].bar(x - width / 2, average_salary, width, label='средняя з/п')
-        self.ax[0, 0].bar(x + width / 2, job_salary, width, label=f'з/п {self.job_name}')
-        self.ax[0, 0].set_title('Уровень зарплат по годам', fontsize=10)
-        self.ax[0, 0].set_xticks(x, labels, fontsize=8)
-        self.ax[0, 0].tick_params(axis='y', labelsize=8)
-        self.ax[0, 0].tick_params(axis='x', labelrotation=90, labelsize=8)
-        self.ax[0, 0].grid(axis='y')
-        self.ax[0, 0].legend(fontsize=8)
+        self.ax[0].bar(x - width / 2, average_salary, width, label='средняя з/п')
+        self.ax[0].bar(x + width / 2, job_salary, width, label=f'з/п {self.job_name}')
+        self.ax[0].set_title('Уровень зарплат по годам', fontsize=10)
+        self.ax[0].set_xticks(x, labels, fontsize=8)
+        self.ax[0].tick_params(axis='y', labelsize=8)
+        self.ax[0].tick_params(axis='x', labelrotation=90, labelsize=8)
+        self.ax[0].grid(axis='y')
+        self.ax[0].legend(fontsize=8)
 
-        self.ax[0, 1].bar(x - width / 2, average_number, width, label='Количество вакансий')
-        self.ax[0, 1].bar(x + width / 2, job_number, width, label=f'Количество вакансий\n{self.job_name}')
-        self.ax[0, 1].set_title('Количество вакансий по годам', fontsize=10)
-        self.ax[0, 1].set_xticks(x, labels, fontsize=8)
-        self.ax[0, 1].tick_params(axis='y', labelsize=8)
-        self.ax[0, 1].tick_params(axis='x', labelrotation=90, labelsize=8)
-        self.ax[0, 1].grid(axis='y')
-        self.ax[0, 1].legend(fontsize=8)
-
+        self.ax[1].bar(x - width / 2, average_number, width, label='Количество вакансий')
+        self.ax[1].bar(x + width / 2, job_number, width, label=f'Количество вакансий\n{self.job_name}')
+        self.ax[1].set_title('Количество вакансий по годам', fontsize=10)
+        self.ax[1].set_xticks(x, labels, fontsize=8)
+        self.ax[1].tick_params(axis='y', labelsize=8)
+        self.ax[1].tick_params(axis='x', labelrotation=90, labelsize=8)
+        self.ax[1].grid(axis='y')
+        self.ax[1].legend(fontsize=8)
 
         self.fig.tight_layout()
 
         # self.fig.show()
-        self.fig.savefig('graph.png')
+        self.fig.savefig('graph_m.png')
 
     def generate_excel(self):
         """Генерирует и сохраняет таблицу в виде .xlsx файла с анализом
         """
         self.analyze_to_rows_xlsx()
         self.edit_sheet_style(self.ws1)
-        self.edit_sheet_style(self.ws2)
-        self.ws2.insert_cols(3)
-        self.ws2.column_dimensions['C'].width = 2
-        for row in self.ws2['E2':'E11']:
-            for el in row:
-                el.number_format = '0.00%'
         self.edit_cols_width(self.ws1)
-        self.edit_cols_width(self.ws2)
-        self.wb.save("report.xlsx")
+        self.wb.save("report_m.xlsx")
 
     def generate_pdf(self):
         """Генерирует и сохраняет pdf файл с изображением и таблицей с анализом
         """
         env = Environment(loader=FileSystemLoader('.'))
-        template = env.get_template("html_template.html")
+        template = env.get_template("html_template_m.html")
         tables = self.analyze_to_rows_html()
         pdf_template = template.render(
-            {'name': self.job_name, 'headers1': tables[0], 'headers2': tables[1], 'rows1': tables[2],
-             'rows2': tables[3]})
+            {'name': self.job_name, 'headers1': tables[0], 'rows1': tables[1]})
         config = pdfkit.configuration(wkhtmltopdf=r'D:\wkhtmltopdf\bin\wkhtmltopdf.exe')
-        pdfkit.from_string(pdf_template, 'report.pdf', configuration=config, options={"enable-local-file-access": ""})
+        pdfkit.from_string(pdf_template, 'report_m.pdf', configuration=config, options={"enable-local-file-access": ""})
 
     def analyze_to_rows_xlsx(self):
         """Преобразовывает словари с анализом из базы данных в строки для таблицы .xlsx
@@ -426,7 +404,6 @@ class Report(object):
                 [year, self.data_set.salary_by_years[year], self.data_set.number_by_years[year],
                  self.data_set.salary_by_years_job[year],
                  self.data_set.number_by_years_job[year]])
-        self.ws2.append(["Город", "Уровень зарплат", "Город", "Доля вакансий"])
 
     def analyze_to_rows_html(self):
         """Преобразовывает словари с анализом из базы данных в строки для html файла, который генерирует таблицу для pdf файла
@@ -439,15 +416,7 @@ class Report(object):
                 [year, self.data_set.salary_by_years[year], self.data_set.number_by_years[year],
                  self.data_set.salary_by_years_job[year],
                  self.data_set.number_by_years_job[year]])
-        headers2 = ["Город", "Уровень зарплат", "", "Город", "Доля вакансий"]
-        salary_items = [(k, v) for k, v in self.data_set.salary_by_area.items()]
-        share_number_items = [(k, v) for k, v in self.data_set.share_number_by_area.items()]
-        rows2 = []
-        for i in range(10):
-            rows2.append([salary_items[i][0], salary_items[i][1], "",
-                          share_number_items[i][0],
-                          f'{round(share_number_items[i][1] * 100, 3)}%'])
-        return headers1, headers2, rows1, rows2
+        return headers1, rows1
 
     @staticmethod
     def edit_sheet_style(ws):
@@ -551,15 +520,14 @@ class InputConnect(object):
     def __init__(self):
         """Иницилизирует объект класса InputConnect, принимает данные из консоли и передаёт их в необходимые классы
         """
-        report_type = False if input("Введите тип данных для вывода(Статистика/Вакансии): ") == "Статистика" else True
-        if report_type:
-            TableOfDataSet()
-        else:
-            name: str = input("Введите название файла: ")
-            job_name = input("Введите название профессии: ")
-            x = Report(name, job_name)
-            # x.generate_image()
-            # x.generate_pdf()
+        name = input("Введите название директории: ")
+        job_name = input("Введите название профессии: ")
+        start_time = datetime.now()
+        x = Report(name, job_name)
+        x.generate_image()
+        x.generate_pdf()
+        print(datetime.now() - start_time)
 
 
-InputConnect()
+if __name__ == '__main__':
+    InputConnect()
