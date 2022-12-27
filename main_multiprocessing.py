@@ -7,8 +7,6 @@ from datetime import datetime
 from openpyxl import Workbook
 from openpyxl.styles import Font, Border, Side
 from jinja2 import Environment, FileSystemLoader
-import prettytable
-from prettytable import PrettyTable
 import pdfkit
 import os
 
@@ -444,73 +442,6 @@ class Report(object):
                     dims[cell.column_letter] = max((dims.get(cell.column_letter, 0), len(str(cell.value)) + 2))
         for col, value in dims.items():
             ws.column_dimensions[col].width = value
-
-
-class TableOfDataSet(object):
-    """Класс для демонстрации вакансий из базы данных в виде таблицы в консоле
-    Attributes:
-        name (str): Название файла
-        filter_params (str или list): Параметры фильтрации вакансий
-        sort_params (str): Параметры сортировки вакансий
-        is_sort_reverse (bool или str): Атрибут, указывающий на необходимость обратной сортировки
-        numbers (list): Список, содержащий границы номеров вакансий, которые нужно выводить
-        new_fields (list): Список столбцов, которые нужно выводить
-        my_table (PrettyTable): Объект консольной таблицы
-        need_filter (bool): Атрибут, указывающий на необходимость фильтрации
-        needSort (bool): Атрибут, указывающий на необходимость сортировки
-        data_set (DataSet): База данных с вакансиями
-    """
-
-    def __init__(self):
-        self.name: str = input("Введите название файла: ")
-        self.filter_params = input("Введите параметр фильтрации: ")
-        self.sort_params = input("Введите параметр сортировки: ")
-        self.is_sort_reverse = input("Обратный порядок сортировки (Да / Нет): ")
-        self.numbers = input("Введите диапазон вывода: ").split()
-        self.new_fields = [x for x in input("Введите требуемые столбцы: ").split(', ') if x != '']
-        self.new_fields.append('№')
-        self.my_table = PrettyTable(border=True, header=True, hrules=prettytable.ALL)
-        self.need_filter = len(self.filter_params) > 0
-        self.needSort = len(self.sort_params) > 0
-        self.check_inputs()
-        self.is_sort_reverse = True if self.is_sort_reverse == "Да" else False
-        self.data_set = DataSet(self.name)
-        if len(self.numbers) < 2:
-            self.numbers = [1, self.data_set.vacancies_number + 1] if len(self.numbers) == 0 else [
-                self.numbers[0],
-                self.data_set.vacancies_number + 1]
-        if self.needSort:
-            self.data_set.sort(self.sort_params, self.is_sort_reverse)
-        self.table_fill()
-
-    def check_inputs(self):
-        """ Проверяет данные, введённые пользователем на корректность
-        """
-        if self.need_filter:
-            if not ':' in self.filter_params:
-                print("Формат ввода некорректен")
-                quit()
-            self.filter_params = self.filter_params.split(': ', 1)
-            if not self.filter_params[0] in functions_for_filter.keys():
-                print("Параметр поиска некорректен")
-                quit()
-        if self.needSort and not self.sort_params in functions_for_sort.keys():
-            print("Параметр сортировки некорректен")
-            quit()
-        if not self.is_sort_reverse in ["Да", "Нет", ""]:
-            print("Порядок сортировки задан некорректно")
-            quit()
-
-    def table_fill(self):
-        """Стилизует и заполняет таблицу данными
-        """
-        self.my_table.field_names = headings
-        self.my_table.add_rows(self.data_set.get_rows(self.need_filter, self.filter_params))
-        self.my_table.align = "l"
-        self.my_table.max_width = 20
-        self.new_fields = self.new_fields if len(self.new_fields) > 1 else self.my_table.field_names
-        print(self.my_table.get_string(start=int(self.numbers[0]) - 1, end=int(self.numbers[1]) - 1,
-                                       fields=self.new_fields))
 
 
 class InputConnect(object):
