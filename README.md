@@ -23,7 +23,7 @@
 
 Можно увидеть, что функция пребразования времени в datetime и в правдлу отнимает много времени
 
-## Ускорение программы
+# Ускорение программы
 Замерим время работы программы без профилизатора в обычных условиях - 39 секунд, однако профилизатор и ввод данных съедали почти половину времени
 ![image](https://user-images.githubusercontent.com/77449049/208978409-1875cccf-7e20-4662-a891-b0f13622e23b.png)
 В моей программе работа класса вакансий и статистики немного отличается, поэтому попробуем вынести переменную со временем в часть вакансий,
@@ -61,3 +61,16 @@ datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z')
 [vacancies_by_2020.csv](https://github.com/MateLR/Utenkov/files/10308549/vacancies_by_2020.csv)
 [vacancies_by_2021.csv](https://github.com/MateLR/Utenkov/files/10308556/vacancies_by_2021.csv)
 [vacancies_by_2022.csv](https://github.com/MateLR/Utenkov/files/10308559/vacancies_by_2022.csv)
+
+## Multiprocessing
+Создал новый скрипт с реализацией многопоточной обработки данных для анализа, новый анализ без городов представлен в файле report_m.pdf
+
+Замеры "До" - 17.5 секунд:
+
+![1](https://user-images.githubusercontent.com/77449049/209734893-de76e97a-a1c7-414f-a942-54ac5f982cce.png)
+
+Замеры "После" - 4.5 секунд:
+
+![2](https://user-images.githubusercontent.com/77449049/209734934-6681c913-b9d9-43e6-9b06-a241786cb0ad.png)
+
+Можем заметить, что получилось ускорить нашу программу в 4 раза
