@@ -40,8 +40,11 @@ datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z')
 ```
 ## Разделение файла
 Написал скрипт для удаления старых файлов и разделение нашего csv файла по годам
+
 //На скриншоте снизу нет документации к коду, в самом коде она есть
 ![image](https://user-images.githubusercontent.com/77449049/209677633-ee7febe7-f596-483a-aa7b-bf5b611920ea.png)
+
+Разбитые файлы из файла vacancies_by_year.csv:
 [vacancies_by_2007.csv](https://github.com/MateLR/Utenkov/files/10308544/vacancies_by_2007.csv)
 [vacancies_by_2008.csv](https://github.com/MateLR/Utenkov/files/10308560/vacancies_by_2008.csv)
 [vacancies_by_2009.csv](https://github.com/MateLR/Utenkov/files/10308563/vacancies_by_2009.csv)
