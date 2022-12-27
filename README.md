@@ -38,7 +38,22 @@ self.year = int(vacancy['published_at'][:4])
 ```py
 datetime.strptime(s, '%Y-%m-%dT%H:%M:%S%z')
 ```
-## Разделение файлов
+## Разделение файла
 Написал скрипт для удаления старых файлов и разделение нашего csv файла по годам
 ![image](https://user-images.githubusercontent.com/77449049/209677633-ee7febe7-f596-483a-aa7b-bf5b611920ea.png)
 [vacancies_by_2007.csv](https://github.com/MateLR/Utenkov/files/10308544/vacancies_by_2007.csv)
+[vacancies_by_2008.csv](https://github.com/MateLR/Utenkov/files/10308560/vacancies_by_2008.csv)
+[vacancies_by_2009.csv](https://github.com/MateLR/Utenkov/files/10308563/vacancies_by_2009.csv)
+[vacancies_by_2010.csv](https://github.com/MateLR/Utenkov/files/10308564/vacancies_by_2010.csv)
+[vacancies_by_2011.csv](https://github.com/MateLR/Utenkov/files/10308566/vacancies_by_2011.csv)
+[vacancies_by_2012.csv](https://github.com/MateLR/Utenkov/files/10308567/vacancies_by_2012.csv)
+[vacancies_by_2013.csv](https://github.com/MateLR/Utenkov/files/10308570/vacancies_by_2013.csv)
+[vacancies_by_2014.csv](https://github.com/MateLR/Utenkov/files/10308574/vacancies_by_2014.csv)
+[vacancies_by_2015.csv](https://github.com/MateLR/Utenkov/files/10308577/vacancies_by_2015.csv)
+[vacancies_by_2016.csv](https://github.com/MateLR/Utenkov/files/10308580/vacancies_by_2016.csv)
+[vacancies_by_2017.csv](https://github.com/MateLR/Utenkov/files/10308585/vacancies_by_2017.csv)
+[vacancies_by_2018.csv](https://github.com/MateLR/Utenkov/files/10308590/vacancies_by_2018.csv)
+[vacancies_by_2019.csv](https://github.com/MateLR/Utenkov/files/10308548/vacancies_by_2019.csv)
+[vacancies_by_2020.csv](https://github.com/MateLR/Utenkov/files/10308549/vacancies_by_2020.csv)
+[vacancies_by_2021.csv](https://github.com/MateLR/Utenkov/files/10308556/vacancies_by_2021.csv)
+[vacancies_by_2022.csv](https://github.com/MateLR/Utenkov/files/10308559/vacancies_by_2022.csv)
